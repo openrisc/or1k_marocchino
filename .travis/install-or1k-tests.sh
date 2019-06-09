@@ -5,9 +5,6 @@ set -x
 mkdir -p $HOME/src/tools
 mkdir -p $HOME/tools
 
-# Install the required sim
-$TRAVIS_BUILD_DIR/.travis/install-${SIM}.sh
-
 # Get our toolchain
 cd $HOME/src/tools
 curl --remote-name --location \
@@ -28,4 +25,3 @@ fusesoc init -y
 fusesoc library add mor1kx-generic https://github.com/stffrdhrn/mor1kx-generic.git
 fusesoc library add intgen https://github.com/stffrdhrn/intgen.git
 fusesoc library add mor1kx $TRAVIS_BUILD_DIR
-
