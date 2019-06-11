@@ -11,7 +11,7 @@ before_install:
   -  docker images
 
 script:
-- docker run --rm -v $(pwd):/src -e "JOB=$JOB" -e "SIM=$SIM" -e "EXPECTED_FAILURES=$EXPECTED_FAILURES" -e "EXTRA_CORE_ARGS=$EXTRA_CORE_ARGS" librecores/librecores-ci /src/.travis/test.sh
+- docker run --rm -v $(pwd):/src -e "JOB=$JOB" -e "SIM=$SIM" -e "EXPECTED_FAILURES=$EXPECTED_FAILURES" librecores/librecores-ci /src/.travis/test.sh
 
 matrix:
   fast_finish: true
@@ -21,5 +21,5 @@ jobs:
     - stage: verilator
       env: JOB=verilator
     - stage: testing
-      env: JOB=or1k-tests SIM=icarus EF="or1k-cy or1k-ov or1k-shortjump"
+      env: JOB=or1k-tests SIM=icarus EXPECTED_FAILURE="or1k-cy or1k-ov or1k-shortjump"
 

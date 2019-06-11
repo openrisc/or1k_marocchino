@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 apt-get update && apt-get install -y curl
@@ -16,6 +15,5 @@ cd /src
 
 echo "Running Job $JOB $SIM "
 echo "Expected failures: $EXPECTED_FAILURES"
-echo "Extra core args: $EXTRA_CORE_ARGS"
 
 ./.travis/run-${JOB}.sh
