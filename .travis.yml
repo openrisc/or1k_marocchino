@@ -21,5 +21,5 @@ jobs:
     - stage: verilator
       env: JOB=verilator
     - stage: testing
-      env: JOB=or1k-tests SIM=icarus EXPECTED_FAILURE="or1k-cy or1k-ov or1k-shortjump"
+      env: JOB=or1k-tests SIM=icarus EXPECTED_FAILURES="or1k-cy or1k-ov or1k-shortjump"
 

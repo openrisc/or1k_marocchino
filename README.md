@@ -41,7 +41,7 @@ details please see the [LICENSE](./LICENSE) file or http://juliusbaxter.net/ohdl
 
 A CPU core cannot be trusted without a full set of verification testing.  The
 `or1k_marocchino` is constantly verified for correctness with the or1k Continuous
-Integration (CI) suite running in [travis ci](https://travis-ci.org/openrisc/or1k_marocchino/).  This currently covers:
+Integration (CI) suite running in travis ci. This currently covers:
 
  - source linting - a `verilator --lint-only` check is run on each commit to
    ensure there are no code quality issues.
