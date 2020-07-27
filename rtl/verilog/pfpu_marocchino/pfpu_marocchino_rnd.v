@@ -64,25 +64,20 @@ module pfpu_marocchino_rnd
   input        add_sign_i,      // add/sub signum
   input        add_sub_0_i,     // flag that actual subtraction is performed and result is zero
   input        add_shr_i,       // do right shift in align stage
-  input [12:0] add_exp13shr_i,  // exponent for right shift align
   input  [5:0] add_shl_i,       // do left shift in align stage
-  input [12:0] add_exp13shl_i,  // exponent for left shift align
   input [12:0] add_exp13sh0_i,  // exponent for no shift in align
   input [56:0] add_fract57_i,   // fractional with appended {r,s} bits
   // input from mul
   input        mul_rdy_i,       // mul is ready
   input        mul_sign_i,      // mul signum
-  input  [5:0] mul_shr_i,       // do right shift in align stage
-  input [12:0] mul_exp13shr_i,  // exponent for right shift align
+  input [10:0] mul_shr_i,       // do right shift in align stage
   input [12:0] mul_exp13sh0_i,  // exponent for no shift in align
   input [56:0] mul_fract57_i,   // fractional with appended {r,s} bits
   // input from div
   input        div_rdy_i,       // div is ready
   input        div_sign_i,      // signum
-  input  [5:0] div_shr_i,       // do right shift in align stage
-  input [12:0] div_exp13shr_i,  // exponent for right shift align
+  input [10:0] div_shr_i,       // do right shift in align stage
   input        div_shl_i,       // do left shift in align stage
-  input [12:0] div_exp13shl_i,  // exponent for left shift align
   input [12:0] div_exp13sh0_i,  // exponent for no shift in align
   input [56:0] div_fract57_i,   // fractional with appended {r,s} bits
   input        div_dbz_i,       // div division by zero flag
@@ -90,9 +85,7 @@ module pfpu_marocchino_rnd
   input        i2f_rdy_i,       // i2f is ready
   input        i2f_sign_i,      // i2f signum
   input  [3:0] i2f_shr_i,
-  input [10:0] i2f_exp11shr_i,
   input  [5:0] i2f_shl_i,
-  input [10:0] i2f_exp11shl_i,
   input [10:0] i2f_exp11sh0_i,
   input [63:0] i2f_fract64_i,
   // input from f2i
@@ -203,44 +196,38 @@ module pfpu_marocchino_rnd
     ({67{i2f_rdy_i}} & {       i2f_fract64_i,3'd0});
 
   // multiplexer for shift values
-  wire  [5:0] s0t_shr;
+  wire [10:0] s0t_shr;
   wire  [5:0] s0t_shl;
   // ---
   assign {s0t_shr, s0t_shl} =
-    ({12{add_rdy_i}} & {{5'd0,add_shr_i},        add_shl_i}) |
-    ({12{mul_rdy_i}} & {       mul_shr_i,             6'd0}) |
-    ({12{div_rdy_i}} & {       div_shr_i, {5'd0,div_shl_i}}) |
-    ({12{f2i_rdy_i}} & {       f2i_shr_i, {2'b0,f2i_shl_i}}) |
-    ({12{i2f_rdy_i}} & {{2'b0,i2f_shr_i},       i2f_shl_i});
+    ({17{add_rdy_i}} & {{10'd0,add_shr_i},        add_shl_i}) |
+    ({17{mul_rdy_i}} & {        mul_shr_i,             6'd0}) |
+    ({17{div_rdy_i}} & {        div_shr_i, {5'd0,div_shl_i}}) |
+    ({17{f2i_rdy_i}} & {{ 5'd0,f2i_shr_i}, {2'b0,f2i_shl_i}}) |
+    ({17{i2f_rdy_i}} & {{ 7'b0,i2f_shr_i},       i2f_shl_i});
   // ---
   wire s0t_is_shr = (|s0t_shr);
-  wire s0t_is_shl = (|s0t_shl);
-  // ---
-  wire [5:0] s0t_sh6 = s0t_is_shr ? s0t_shr :
-                       s0t_is_shl ? s0t_shl : 6'd0;
+  // limit shift rigth by 6-bits for fractional align
+  wire  [5:0] s0t_shr6 = (|s0t_shr[10:6]) ? 6'd63 : s0t_shr[5:0];
+  // limit shift value by 6-bits for fractional align
+  wire  [5:0] s0t_shx6 = s0t_is_shr ? s0t_shr6 : s0t_shl;
 
-  // two stage multiplexer for exponents
-  wire [12:0] s0t_exp13shr;
-  wire [12:0] s0t_exp13shl;
-  wire [12:0] s0t_exp13sh0;
-  // ---
-  assign {s0t_exp13shr, s0t_exp13shl, s0t_exp13sh0} =
-    ({39{add_rdy_i}} & {add_exp13shr_i, add_exp13shl_i, add_exp13sh0_i}) |
-    ({39{mul_rdy_i}} & {mul_exp13shr_i,          13'd0, mul_exp13sh0_i}) |
-    ({39{div_rdy_i}} & {div_exp13shr_i, div_exp13shl_i, div_exp13sh0_i}) |
-    ({39{f2i_rdy_i}} & {         13'd0,          13'd0,          13'd0}) |
-    ({39{i2f_rdy_i}} & {{2'd0,i2f_exp11shr_i},{2'd0,i2f_exp11shl_i},{2'd0,i2f_exp11sh0_i}});
+  // multiplexer for exponents
+  wire [12:0] s0t_exp13sh0 =
+    ({13{add_rdy_i}} & add_exp13sh0_i) |
+    ({13{mul_rdy_i}} & mul_exp13sh0_i) |
+    ({13{div_rdy_i}} & div_exp13sh0_i) |
+    ({13{i2f_rdy_i}} & {2'd0,i2f_exp11sh0_i});
 
-  wire [12:0] s0t_exp13 = s0t_is_shr ? s0t_exp13shr :
-                          s0t_is_shl ? s0t_exp13shl : s0t_exp13sh0;
 
   // stage #0 output registers
   reg         s0o_sign;
   reg         s0o_is_shr;
-  reg   [5:0] s0o_shr;    // for correct computation of sticky
-  reg   [5:0] s0o_shl;    // for correct computation of sticky
-  reg   [5:0] s0o_sh6;    // for shift
-  reg  [12:0] s0o_exp13;
+  reg  [10:0] s0o_shr;    // for exponent align
+  reg   [5:0] s0o_shl;    // for correct computation of sticky and exponent align
+  reg   [5:0] s0o_shr6;   // for correct computation of sticky
+  reg   [5:0] s0o_shx6;   // for shift fractional
+  reg  [12:0] s0o_exp13sh0;
   reg  [66:0] s0o_fract67;
   reg         s0o_op_fp64_arith;
   // various flags:
@@ -263,8 +250,9 @@ module pfpu_marocchino_rnd
       s0o_is_shr        <= s0t_is_shr;
       s0o_shr           <= s0t_shr;
       s0o_shl           <= s0t_shl;
-      s0o_sh6           <= s0t_sh6;
-      s0o_exp13         <= s0t_exp13;
+      s0o_shr6          <= s0t_shr6;
+      s0o_shx6          <= s0t_shx6;
+      s0o_exp13sh0      <= s0t_exp13sh0;
       s0o_fract67       <= s0t_is_shr ? s0t_fract67 : reverse67_pfpu_rnd(s0t_fract67);
       s0o_op_fp64_arith <= rnd_op_fp64_arith_i;
       // various flags:
@@ -296,8 +284,13 @@ module pfpu_marocchino_rnd
 
   /* Stage #1: common align */
 
-  // align
-  wire [66:0] s1t_fract67shr = (s0o_fract67 >> s0o_sh6);
+  // exponent align
+  wire [12:0] s1t_exp13 = s0o_f2i    ? 13'd0 :
+                          s0o_is_shr ? (s0o_exp13sh0 + {2'd0,s0o_shr}) :
+                                       (s0o_exp13sh0 - {7'd0,s0o_shl});
+
+  // fractional align
+  wire [66:0] s1t_fract67shr = (s0o_fract67 >> s0o_shx6);
   wire [66:0] s1t_fract67sh  = s0o_is_shr ? s1t_fract67shr : reverse67_pfpu_rnd(s1t_fract67shr);
 
   // update sticky bit for right shift case.
@@ -308,9 +301,9 @@ module pfpu_marocchino_rnd
   //      11 in double precision case
   //       8 in single precision case
   reg s1r_sticky;
-  always @(s1t_fract57 or s0o_shr) begin
+  always @(s1t_fract57 or s0o_shr6) begin
     (* parallel_case *)
-    case (s0o_shr)
+    case (s0o_shr6)
       6'd0   : s1r_sticky = |s1t_fract57[ 1:0];
       6'd1   : s1r_sticky = |s1t_fract57[ 2:0];
       6'd2   : s1r_sticky = |s1t_fract57[ 3:0];
@@ -409,7 +402,7 @@ module pfpu_marocchino_rnd
   always @(posedge cpu_clk) begin
     if(s1_adv) begin
       s1o_sign          <= s0o_sign;
-      s1o_exp13         <= s0o_exp13;
+      s1o_exp13         <= s1t_exp13;
       s1o_fract64       <= s1t_fract67sh[66:3];
       s1o_rs            <= {s1t_fract67sh[2],s1t_sticky};
       s1o_op_fp64_arith <= s0o_op_fp64_arith;
@@ -442,9 +435,16 @@ module pfpu_marocchino_rnd
   end // @clock
 
 
-  /* Stage #2: rounding */
+  /* Stage #2: tininess detection and rounding */
+  
+  /* tininess detection before rounding */
+  // aligned (e == 0) OR (e == 1) 
+  wire s2t_exp13_01 = ~(|s1o_exp13[12:1]);
+  // aligned result is denormalized
+  wire s2t_tiny = s1o_f2i ? 1'b0 : 
+                  (s2t_exp13_01 & (s1o_op_fp64_arith ? ~s1o_fract64[52] : ~s1o_fract64[23]));
 
-
+  /* rounding */
   wire s2t_g    = s1o_fract64[0];
   wire s2t_r    = s1o_rs[1];
   wire s2t_s    = s1o_rs[0];
@@ -490,6 +490,7 @@ module pfpu_marocchino_rnd
   reg [63:0] s2o_fract64_rnd;
   reg        s2o_lost;
   reg        s2o_op_fp64_arith;
+  reg        s2o_tiny;
   reg        s2o_inv;
   reg        s2o_inf;
   reg        s2o_snan;
@@ -511,6 +512,7 @@ module pfpu_marocchino_rnd
       s2o_lost          <= s2t_lost;
       s2o_op_fp64_arith <= s1o_op_fp64_arith;
       // various flags:
+      s2o_tiny          <= s2t_tiny;
       s2o_inv           <= s1o_inv;
       s2o_inf           <= s1o_inf;
       s2o_snan          <= s1o_snan;
@@ -562,9 +564,10 @@ module pfpu_marocchino_rnd
 
   // output of final align stage
   reg         s3o_sign;
-  reg         s3o_lost;
   reg         s3o_op_fp64_arith;
   // various flags:
+  reg         s3o_lost;
+  reg         s3o_unf;
   reg         s3o_inv;
   reg         s3o_inf;
   reg         s3o_snan;
@@ -586,9 +589,10 @@ module pfpu_marocchino_rnd
   always @(posedge cpu_clk) begin
     if(s3_adv) begin
       s3o_sign            <= s2o_sign;
-      s3o_lost            <= s2o_lost;
       s3o_op_fp64_arith   <= s2o_op_fp64_arith;
       // various flags:
+      s3o_lost            <= s2o_lost;
+      s3o_unf             <= s2o_lost & s2o_tiny;
       s3o_inv             <= s2o_inv;
       s3o_inf             <= s2o_inf;
       s3o_snan            <= s2o_snan;
@@ -645,10 +649,10 @@ module pfpu_marocchino_rnd
    (s3o_inv ?               {1'b0,1'b0,1'b0,1'b0,1'b0} :
     // overflow and infinity                          ine                       ovf  inf  unf  zer
    (s3o_fxx_ovf ? {((s3o_lost | (~s3o_inf)) & (~s3o_dbz)),((~s3o_inf) & (~s3o_dbz)),1'b1,1'b0,1'b0} :
-    // denormalized or zero      ine  ovf  inf                             unf                 zer
-   ((s3o_fxx_fract53_dn) ? {s3o_lost,1'b0,1'b0,(s3o_lost & s3o_fxx_fract53_dn),~(|s3o_fxx_fract53)} :
-    // normal result             ine  ovf  inf  unf  zer
-                           {s3o_lost,1'b0,1'b0,1'b0,1'b0}))));
+    // denormalized or zero      ine  ovf  inf     unf                 zer
+   ((s3o_fxx_fract53_dn) ? {s3o_lost,1'b0,1'b0,s3o_unf,~(|s3o_fxx_fract53)} :
+    // normal result             ine  ovf  inf     unf  zer
+                           {s3o_lost,1'b0,1'b0,s3o_unf,1'b0}))));
 
   // Multiplexing double precision
   wire [63:0] s4t_opc64;

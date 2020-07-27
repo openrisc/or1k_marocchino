@@ -22,6 +22,8 @@
 //                                                                    //
 ////////////////////////////////////////////////////////////////////////
 
+`include "or1k_defines.v"
+
 /* Configure these defines to point to the marocchino instantiation */
 `ifndef OR1K_INST
  `define OR1K_INST dut.gencpu.or1k_marocchino0

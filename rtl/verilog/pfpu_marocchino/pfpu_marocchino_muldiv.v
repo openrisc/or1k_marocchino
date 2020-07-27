@@ -66,16 +66,13 @@ module pfpu_marocchino_muldiv
   input             opc_0_i,         // force intermediate results to zero
   // MUL outputs
   output            mul_sign_o,      // signum
-  output      [5:0] mul_shr_o,       // do right shift in align stage
-  output     [12:0] mul_exp13shr_o,  // exponent for right shift align
+  output     [10:0] mul_shr_o,       // do right shift in align stage
   output     [12:0] mul_exp13sh0_o,  // exponent for no shift in align
   output     [56:0] mul_fract57_o,   // fractional with appended {r,s} bits
   // DIV outputs
   output            div_sign_o,      // signum
-  output      [5:0] div_shr_o,       // do right shift in align stage
-  output     [12:0] div_exp13shr_o,  // exponent for right shift align
+  output     [10:0] div_shr_o,       // do right shift in align stage
   output            div_shl_o,       // do left shift in align stage
-  output     [12:0] div_exp13shl_o,  // exponent for left shift align
   output     [12:0] div_exp13sh0_o,  // exponent for no shift in align
   output     [56:0] div_fract57_o,   // fractional with appended {r,s} bits
   output            div_dbz_o        // div division by zero flag
@@ -421,25 +418,19 @@ module pfpu_marocchino_muldiv
 
 
   // right shift value
-  // and appropriately corrected exponent
-  wire s1o_exp13c_0              = ~(|s1o_exp13c);
-  wire [12:0] s2t_shr_of_neg_exp = (~s1o_exp13c) + 13'd2; // (8192-v+1) and truncate to 13bits
-  // variants:
-  wire [12:0] s2t_shr_t;
-  wire [12:0] s2t_exp13rx;
-  assign {s2t_shr_t,s2t_exp13rx} =
-    // force zero result
-    s1o_opc_0     ? {13'd0,13'd0} :
-    // negative exponent sum
+  // variants (maximum possible value is 1126 -> 11 bits):
+  wire [10:0] s2t_shrx =
+    // negative exponent sum: (-e+1) = (~e + 2)
     //   (!) takes 1x.xx case into account automatically
-    s1o_exp13c[12] ? {s2t_shr_of_neg_exp,13'd1} :
+    s1o_exp13c[12] ? ((~s1o_exp13c[10:0]) + 11'd2) :
     // (a) zero exponent sum (denorm. result potentially)
     //   (!) takes 1x.xx case into account automatically
     // (b) normal case
     //   (!) 1x.xx case is processed in next stage
-                    {{12'd0,s1o_exp13c_0},(s1o_exp13c | {12'd0,s1o_exp13c_0})};
-  // limited by 64 and forced result to zero
-  wire [5:0] s2t_shrx = s2t_shr_t[5:0] | {6{|s2t_shr_t[12:6]}};
+                     {10'd0,~(|s1o_exp13c)};
+
+  // zero exponent for forced zero result
+  wire [12:0] s2t_exp13c = s1o_opc_0 ? 13'd0 : s1o_exp13c;
 
 
   /**** Multiplier instance ****/
@@ -458,16 +449,15 @@ module pfpu_marocchino_muldiv
     .rnd_taking_mul_i     (rnd_taking_mul_i), // FP64_MUL
     // operands
     .s1o_signc_i          (s1o_signc), // FP64_MUL
-    .s1o_exp13c_i         (s1o_exp13c), // FP64_MUL
+    .s2t_exp13c_i         (s2t_exp13c), // FP64_MUL
     .s2t_shrx_i           (s2t_shrx), // FP64_MUL
-    .s2t_exp13rx_i        (s2t_exp13rx), // FP64_MUL
+    .s1o_opc_0_i          (s1o_opc_0), // FP64_MUL
     .s1o_fract53a_i       (s1o_fract53a), // FP64_MUL
     .s1o_fract53b_i       (s1o_fract53b), // FP64_MUL
     .s1o_op_fp64_arith_i  (s1o_op_fp64_arith), // FP64_MUL
     // MUL outputs
     .mul_sign_o           (mul_sign_o), // FP64_MUL
     .mul_shr_o            (mul_shr_o), // FP64_MUL
-    .mul_exp13shr_o       (mul_exp13shr_o), // FP64_MUL
     .mul_exp13sh0_o       (mul_exp13sh0_o), // FP64_MUL
     .mul_fract57_o        (mul_fract57_o) // FP64_MUL
   );
@@ -489,9 +479,8 @@ module pfpu_marocchino_muldiv
     .rnd_taking_div_i     (rnd_taking_div_i), // FP64_DIV
     // operands
     .s1o_signc_i          (s1o_signc), // FP64_DIV
-    .s1o_exp13c_i         (s1o_exp13c), // FP64_DIV
+    .s2t_exp13c_i         (s2t_exp13c), // FP64_DIV
     .s2t_shrx_i           (s2t_shrx), // FP64_DIV
-    .s2t_exp13rx_i        (s2t_exp13rx), // FP64_DIV
     .s1o_fract53a_i       (s1o_fract53a), // FP64_DIV
     .s1o_fract53b_i       (s1o_fract53b), // FP64_DIV
     .s1o_opc_0_i          (s1o_opc_0), // FP64_DIV
@@ -500,9 +489,7 @@ module pfpu_marocchino_muldiv
     // DIV outputs
     .div_sign_o           (div_sign_o), // FP64_DIV
     .div_shr_o            (div_shr_o), // FP64_DIV
-    .div_exp13shr_o       (div_exp13shr_o), // FP64_DIV
     .div_shl_o            (div_shl_o), // FP64_DIV
-    .div_exp13shl_o       (div_exp13shl_o), // FP64_DIV
     .div_exp13sh0_o       (div_exp13sh0_o), // FP64_DIV
     .div_fract57_o        (div_fract57_o), // FP64_DIV
     .div_dbz_o            (div_dbz_o) // FP64_DIV

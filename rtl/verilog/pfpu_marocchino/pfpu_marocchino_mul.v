@@ -51,16 +51,15 @@ module pfpu_marocchino_mul
   input             rnd_taking_mul_i,
   // operands
   input             s1o_signc_i,
-  input      [12:0] s1o_exp13c_i,
-  input       [5:0] s2t_shrx_i,
-  input      [12:0] s2t_exp13rx_i,
+  input      [12:0] s2t_exp13c_i,
+  input      [10:0] s2t_shrx_i,
+  input             s1o_opc_0_i,
   input      [52:0] s1o_fract53a_i,
   input      [52:0] s1o_fract53b_i,
   input             s1o_op_fp64_arith_i,
   // MUL outputs
   output reg        mul_sign_o,      // signum
-  output reg  [5:0] mul_shr_o,       // do right shift in align stage
-  output reg [12:0] mul_exp13shr_o,  // exponent for right shift align
+  output reg [10:0] mul_shr_o,       // do right shift in align stage
   output reg [12:0] mul_exp13sh0_o,  // exponent for no shift in align
   output reg [56:0] mul_fract57_o    // fractional with appended {r,s} bits
 );
@@ -119,8 +118,8 @@ module pfpu_marocchino_mul
   //   computation related
   reg        s2o_signc;
   reg [12:0] s2o_exp13c;
-  reg  [5:0] s2o_shrx;
-  reg [12:0] s2o_exp13rx;
+  reg [10:0] s2o_shrx;
+  reg        s2o_opc_0;
   //   all 16 partial multiplies
   reg [25:0] s2o_a0b0, s2o_a0b1, s2o_a1b0, s2o_a1b1;
   reg [25:0] s2o_a0b2, s2o_a2b0;
@@ -135,9 +134,9 @@ module pfpu_marocchino_mul
     if (s2_adv) begin
       // computation related
       s2o_signc         <= s1o_signc_i;
-      s2o_exp13c        <= s1o_exp13c_i;
+      s2o_exp13c        <= s2t_exp13c_i;
       s2o_shrx          <= s2t_shrx_i;
-      s2o_exp13rx       <= s2t_exp13rx_i;
+      s2o_opc_0         <= s1o_opc_0_i;
       s2o_op_fp64_arith <= s1o_op_fp64_arith_i;
       // partial multiplies
       s2o_a0b0 <= s2t_a0 * s2t_b0;
@@ -177,8 +176,8 @@ module pfpu_marocchino_mul
   //   computation related
   reg        s3o_signc;
   reg [12:0] s3o_exp13c;
-  reg  [5:0] s3o_shrx;
-  reg [12:0] s3o_exp13rx;
+  reg [10:0] s3o_shrx;
+  reg        s3o_opc_0;
   //   partial sum and sticky
   reg        s3o_sticky;
   reg [26:0] s3o_sum27_a1b0;
@@ -196,7 +195,7 @@ module pfpu_marocchino_mul
       s3o_signc         <= s2o_signc;
       s3o_exp13c        <= s2o_exp13c;
       s3o_shrx          <= s2o_shrx;
-      s3o_exp13rx       <= s2o_exp13rx;
+      s3o_opc_0         <= s2o_opc_0;
       s3o_op_fp64_arith <= s2o_op_fp64_arith;
       // partial sum and sticky
       s3o_sticky     <= |s2o_a0b0[12:0];
@@ -229,8 +228,8 @@ module pfpu_marocchino_mul
   //   computation related
   reg        s4o_signc;
   reg [12:0] s4o_exp13c;
-  reg  [5:0] s4o_shrx;
-  reg [12:0] s4o_exp13rx;
+  reg [10:0] s4o_shrx;
+  reg        s4o_opc_0;
   //   partial sums and sticky
   reg        s4o_sticky;
   reg [38:0] s4o_sum39_a1b1;
@@ -244,7 +243,7 @@ module pfpu_marocchino_mul
       s4o_signc         <= s3o_signc;
       s4o_exp13c        <= s3o_exp13c;
       s4o_shrx          <= s3o_shrx;
-      s4o_exp13rx       <= s3o_exp13rx;
+      s4o_opc_0         <= s3o_opc_0;
       s4o_op_fp64_arith <= s3o_op_fp64_arith;
       // partial sums and sticky
       s4o_sticky     <= s3o_sticky;
@@ -275,16 +274,15 @@ module pfpu_marocchino_mul
   wire  [2:0] s5t_f32_qrs = {s4o_sum39_a1b1[9:8], // f32: {q,r}
                              ((|s4o_sum39_a1b1[7:0]) | s4o_sticky)}; // f32: {s}
 
-  wire        s5t_shrx_n0 = (|s4o_shrx);
-  wire  [5:0] s5t_shrx    = s5t_shrx_n0 ? s4o_shrx : {5'd0,s5t_f32_fract25[24]};
-  wire [12:0] s5t_exp13rx = s5t_shrx_n0 ? s4o_exp13rx : (s4o_exp13c + {12'd0,s5t_f32_fract25[24]});
+  wire [10:0] s5t_shrx = s4o_opc_0   ? 11'd0 :
+                         (|s4o_shrx) ? s4o_shrx : {10'd0,s5t_f32_fract25[24]};
 
   // stage #5 outputs
   //   computation related
   reg        s5o_signc;
   reg [12:0] s5o_exp13c;
-  reg  [5:0] s5o_shrx;
-  reg [12:0] s5o_exp13rx;
+  reg [10:0] s5o_shrx;
+  reg        s5o_opc_0;
   //   partial sums and sticky
   reg        s5o_sticky;
   reg [40:0] s5o_sum41_a3b0;
@@ -296,7 +294,7 @@ module pfpu_marocchino_mul
       s5o_signc   <= s4o_signc;
       s5o_exp13c  <= s4o_exp13c;
       s5o_shrx    <= s4o_shrx;
-      s5o_exp13rx <= s4o_exp13rx;
+      s5o_opc_0   <= s4o_opc_0;
       // partial sums and sticky
       s5o_sticky     <= (|s4o_sum39_a1b1[12:0]) | s4o_sticky;
       s5o_sum41_a3b0 <= s4o_sum41_a3b0 + {15'd0,s4o_sum39_a1b1[38:13]};
@@ -322,8 +320,8 @@ module pfpu_marocchino_mul
   //   computation related
   reg        s6o_signc;
   reg [12:0] s6o_exp13c;
-  reg  [5:0] s6o_shrx;
-  reg [12:0] s6o_exp13rx;
+  reg [10:0] s6o_shrx;
+  reg        s6o_opc_0;
   //   partial sums and sticky
   reg        s6o_sticky;
   reg [66:0] s6o_sum67;
@@ -334,7 +332,7 @@ module pfpu_marocchino_mul
       s6o_signc   <= s5o_signc;
       s6o_exp13c  <= s5o_exp13c;
       s6o_shrx    <= s5o_shrx;
-      s6o_exp13rx <= s5o_exp13rx;
+      s6o_opc_0   <= s5o_opc_0;
       // partial sums and sticky
       s6o_sticky <= (|s5o_sum41_a3b0[12:0]) | s5o_sticky;
       s6o_sum67  <= s5o_sum67_a3b3 + {39'd0,s5o_sum41_a3b0[40:13]};
@@ -358,15 +356,13 @@ module pfpu_marocchino_mul
   wire  [2:0] s7t_f64_qrs     = {s6o_sum67[12:11],
                                  ((|s6o_sum67[10:0]) | s6o_sticky)};
 
-  wire        s7t_shrx_n0 = (|s6o_shrx);
-  wire  [5:0] s7t_shrx    = s7t_shrx_n0 ? s6o_shrx : {5'd0,s6o_sum67[66]};
-  wire [12:0] s7t_exp13rx = s7t_shrx_n0 ? s6o_exp13rx : (s6o_exp13c + {12'd0,s6o_sum67[66]});
-
+  wire [10:0] s7t_shrx = s6o_opc_0   ? 11'd0 : 
+                         (|s6o_shrx) ? s6o_shrx : {10'd0,s6o_sum67[66]};
+  
   always @(posedge cpu_clk) begin
     if (out_adv_d | out_adv_s) begin
       mul_sign_o     <= (s6o_mul_ready ? s6o_signc   : s4o_signc);
       mul_shr_o      <= (s6o_mul_ready ? s7t_shrx    : s5t_shrx);
-      mul_exp13shr_o <= (s6o_mul_ready ? s7t_exp13rx : s5t_exp13rx);
       mul_exp13sh0_o <= (s6o_mul_ready ? s6o_exp13c  : s4o_exp13c);
       mul_fract57_o  <= (s6o_mul_ready ? {s7t_f64_fract54,s7t_f64_qrs} : {29'd0,s5t_f32_fract25,s5t_f32_qrs});
     end // advance pipe

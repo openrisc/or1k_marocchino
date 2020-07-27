@@ -55,9 +55,7 @@ module pfpu_marocchino_i2f
   // outputs for rounding
   output reg        i2f_sign_o,
   output reg  [3:0] i2f_shr_o,
-  output reg [10:0] i2f_exp11shr_o,
   output reg  [5:0] i2f_shl_o,
-  output reg [10:0] i2f_exp11shl_o,
   output reg [10:0] i2f_exp11sh0_o,
   output reg [63:0] i2f_fract64_o
 );
@@ -227,21 +225,15 @@ module pfpu_marocchino_i2f
   // pending data latches
   reg         i2f_sign_p;
   reg   [3:0] i2f_shr_p;
-  reg  [10:0] i2f_exp11shr_p;
-  wire [10:0] i2f_exp11shr_m;
   reg   [5:0] i2f_shl_p;
-  reg  [10:0] i2f_exp11shl_p;
-  wire [10:0] i2f_exp11shl_m;
   reg  [10:0] i2f_exp11sh0_p;
   wire [10:0] i2f_exp11sh0_m;
   reg  [63:0] i2f_fract64_p;
   wire [63:0] i2f_fract64_m;
 
   // pre-latching multiplexors
-  assign i2f_exp11shr_m = (s0o_op_fp64_arith ? 11'd1075 : 11'd150) + {7'd0,s1t_shrx}; // 1075=1023+52, 150=127+23
-  assign i2f_exp11shl_m = (s0o_op_fp64_arith ? 11'd1075 : 11'd150) - {5'd0,s1t_shlx};
-  assign i2f_exp11sh0_m =  s0o_op_fp64_arith ? ({11{s1t_fract64[52]}} & 11'd1075) : // "1" is in [52] / zero
-                                               ({11{s1t_fract64[55]}} & 11'd150);
+  // no shift exponent: 1075=1023+52, 150=127+23  
+  assign i2f_exp11sh0_m =  s0o_op_fp64_arith ? 11'd1075 : 11'd150;
   // for rounding engine we re-pack 32-bits integer to LSBs
   assign i2f_fract64_m  =  s0o_op_fp64_arith ? (s1t_fract64) : ({32'd0,s1t_fract64[63:32]});
 
@@ -250,9 +242,7 @@ module pfpu_marocchino_i2f
     if (~s0o_pending) begin
       i2f_sign_p      <= s1t_signa;
       i2f_shr_p       <= s1t_shrx;
-      i2f_exp11shr_p  <= i2f_exp11shr_m;
       i2f_shl_p       <= s1t_shlx;
-      i2f_exp11shl_p  <= i2f_exp11shl_m;
       i2f_exp11sh0_p  <= i2f_exp11sh0_m;
       i2f_fract64_p   <= i2f_fract64_m;
     end // advance
@@ -264,9 +254,7 @@ module pfpu_marocchino_i2f
         // computation related
       i2f_sign_o     <= s0o_pending ? i2f_sign_p     : s1t_signa;
       i2f_shr_o      <= s0o_pending ? i2f_shr_p      : s1t_shrx;
-      i2f_exp11shr_o <= s0o_pending ? i2f_exp11shr_p : i2f_exp11shr_m;
       i2f_shl_o      <= s0o_pending ? i2f_shl_p      : s1t_shlx;
-      i2f_exp11shl_o <= s0o_pending ? i2f_exp11shl_p : i2f_exp11shl_m;
       i2f_exp11sh0_o <= s0o_pending ? i2f_exp11sh0_p : i2f_exp11sh0_m;
       i2f_fract64_o  <= s0o_pending ? i2f_fract64_p  : i2f_fract64_m;
     end // advance

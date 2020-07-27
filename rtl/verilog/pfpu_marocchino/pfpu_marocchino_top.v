@@ -313,9 +313,7 @@ u_pfpu_ocb
 wire        add_sign;      // add/sub signum
 wire        add_sub_0;     // flag that actual subtraction is performed and result is zero
 wire        add_shr;       // do right shift in align stage
-wire [12:0] add_exp13shr;  // exponent for right shift align
 wire  [5:0] add_shl;       // do left shift in align stage
-wire [12:0] add_exp13shl;  // exponent for left shift align
 wire [12:0] add_exp13sh0;  // exponent for no shift in align
 wire [56:0] add_fract57;   // fractional with appended {r,s} bits
 //   module instance
@@ -349,9 +347,7 @@ pfpu_marocchino_addsub u_pfpu_addsub
   .add_sign_o             (add_sign), // PFPU_ADDSUB
   .add_sub_0_o            (add_sub_0), // PFPU_ADDSUB
   .add_shr_o              (add_shr), // PFPU_ADDSUB
-  .add_exp13shr_o         (add_exp13shr), // PFPU_ADDSUB
   .add_shl_o              (add_shl), // PFPU_ADDSUB
-  .add_exp13shl_o         (add_exp13shl), // PFPU_ADDSUB
   .add_exp13sh0_o         (add_exp13sh0), // PFPU_ADDSUB
   .add_fract57_o          (add_fract57) // PFPU_ADDSUB
 );
@@ -360,16 +356,13 @@ pfpu_marocchino_addsub u_pfpu_addsub
 // MUL/DIV pipeline
 //   MUL outputs
 wire        mul_sign;      // mul signum
-wire  [5:0] mul_shr;       // do right shift in align stage
-wire [12:0] mul_exp13shr;  // exponent for right shift align
+wire [10:0] mul_shr;       // do right shift in align stage
 wire [12:0] mul_exp13sh0;  // exponent for no shift in align
 wire [56:0] mul_fract57;   // fractional with appended {r,s} bits
 // DIV outputs
 wire        div_sign;      // signum
-wire  [5:0] div_shr;       // do right shift in align stage
-wire [12:0] div_exp13shr;  // exponent for right shift align
+wire [10:0] div_shr;       // do right shift in align stage
 wire        div_shl;       // do left shift in align stage
-wire [12:0] div_exp13shl;  // exponent for left shift align
 wire [12:0] div_exp13sh0;  // exponent for no shift in align
 wire [56:0] div_fract57;   // fractional with appended {r,s} bits
 wire        div_dbz;        // div division by zero flag
@@ -402,15 +395,12 @@ pfpu_marocchino_muldiv u_pfpu_muldiv
   // MUL outputs
   .mul_sign_o             (mul_sign), // PFPU_MULDIV
   .mul_shr_o              (mul_shr), // PFPU_MULDIV
-  .mul_exp13shr_o         (mul_exp13shr), // PFPU_MULDIV
   .mul_exp13sh0_o         (mul_exp13sh0), // PFPU_MULDIV
   .mul_fract57_o          (mul_fract57), // PFPU_MULDIV
   // DIV outputs
   .div_sign_o             (div_sign), // PFPU_MULDIV
   .div_shr_o              (div_shr), // PFPU_MULDIV
-  .div_exp13shr_o         (div_exp13shr), // PFPU_MULDIV
   .div_shl_o              (div_shl), // PFPU_MULDIV
-  .div_exp13shl_o         (div_exp13shl), // PFPU_MULDIV
   .div_exp13sh0_o         (div_exp13sh0), // PFPU_MULDIV
   .div_fract57_o          (div_fract57), // PFPU_MULDIV
   .div_dbz_o              (div_dbz) // PFPU_MULDIV
@@ -421,9 +411,7 @@ pfpu_marocchino_muldiv u_pfpu_muldiv
 //   i2f connection wires
 wire        i2f_sign;
 wire  [3:0] i2f_shr;
-wire [10:0] i2f_exp11shr;
 wire  [5:0] i2f_shl;
-wire [10:0] i2f_exp11shl;
 wire [10:0] i2f_exp11sh0;
 wire [63:0] i2f_fract64;
 //   i2f module instance
@@ -443,9 +431,7 @@ pfpu_marocchino_i2f u_pfpu_i2f
   // outputs for rounding
   .i2f_sign_o             (i2f_sign), // PFPU_I2F
   .i2f_shr_o              (i2f_shr), // PFPU_I2F
-  .i2f_exp11shr_o         (i2f_exp11shr), // PFPU_I2F
   .i2f_shl_o              (i2f_shl), // PFPU_I2F
-  .i2f_exp11shl_o         (i2f_exp11shl), // PFPU_I2F
   .i2f_exp11sh0_o         (i2f_exp11sh0), // PFPU_I2F
   .i2f_fract64_o          (i2f_fract64) // PFPU_I2F
 );
@@ -543,25 +529,20 @@ pfpu_marocchino_rnd  u_pfpu_rnd
   .add_sign_i                 (add_sign), // PFPU_RND
   .add_sub_0_i                (add_sub_0), // PFPU_RND
   .add_shr_i                  (add_shr), // PFPU_RND
-  .add_exp13shr_i             (add_exp13shr), // PFPU_RND
   .add_shl_i                  (add_shl), // PFPU_RND
-  .add_exp13shl_i             (add_exp13shl), // PFPU_RND
   .add_exp13sh0_i             (add_exp13sh0), // PFPU_RND
   .add_fract57_i              (add_fract57), // PFPU_RND
   // from mul
   .mul_rdy_i                  (rnd_muxing_mul), // PFPU_RND
   .mul_sign_i                 (mul_sign), // PFPU_RND
   .mul_shr_i                  (mul_shr), // PFPU_RND
-  .mul_exp13shr_i             (mul_exp13shr), // PFPU_RND
   .mul_exp13sh0_i             (mul_exp13sh0), // PFPU_RND
   .mul_fract57_i              (mul_fract57), // PFPU_RND
   // from div
   .div_rdy_i                  (rnd_muxing_div), // PFPU_RND
   .div_sign_i                 (div_sign), // PFPU_RND
   .div_shr_i                  (div_shr), // PFPU_RND
-  .div_exp13shr_i             (div_exp13shr), // PFPU_RND
   .div_shl_i                  (div_shl), // PFPU_RND
-  .div_exp13shl_i             (div_exp13shl), // PFPU_RND
   .div_exp13sh0_i             (div_exp13sh0), // PFPU_RND
   .div_fract57_i              (div_fract57), // PFPU_RND
   .div_dbz_i                  (div_dbz), // PFPU_RND
@@ -569,9 +550,7 @@ pfpu_marocchino_rnd  u_pfpu_rnd
   .i2f_rdy_i                  (rnd_muxing_i2f), // PFPU_RND
   .i2f_sign_i                 (i2f_sign), // PFPU_RND
   .i2f_shr_i                  (i2f_shr), // PFPU_RND
-  .i2f_exp11shr_i             (i2f_exp11shr), // PFPU_RND
   .i2f_shl_i                  (i2f_shl), // PFPU_RND
-  .i2f_exp11shl_i             (i2f_exp11shl), // PFPU_RND
   .i2f_exp11sh0_i             (i2f_exp11sh0), // PFPU_RND
   .i2f_fract64_i              (i2f_fract64), // PFPU_RND
   // from f2i

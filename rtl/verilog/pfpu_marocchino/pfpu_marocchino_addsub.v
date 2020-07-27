@@ -75,9 +75,7 @@ module pfpu_marocchino_addsub
   output reg        add_sign_o,      // signum
   output reg        add_sub_0_o,     // flag that actual subtraction is performed and result is zero
   output reg        add_shr_o,       // do right shift in align stage
-  output reg [12:0] add_exp13shr_o,  // exponent for right shift align
   output reg  [5:0] add_shl_o,       // do left shift in align stage
-  output reg [12:0] add_exp13shl_o,  // exponent for left shift align
   output reg [12:0] add_exp13sh0_o,  // exponent for no shift in align
   output reg [56:0] add_fract57_o    // fractional with appended {r,s} bits
 );
@@ -475,21 +473,14 @@ module pfpu_marocchino_addsub
     endcase
   end // always
 
-  // left shift amount and corrected exponent
-  wire  [5:0] s4t_nlz_m1    = (s4t_nlz - 6'd1);
-  wire [12:0] s4t_exp13c_m1 = s3o_exp13c - 13'd1;
-  wire [12:0] s4t_exp13c_mz = s3o_exp13c - {7'd0,s4t_nlz};
-  wire  [5:0] s4t_shl;
-  wire [12:0] s4t_exp13shl;
-  assign {s4t_shl,s4t_exp13shl} =
+  // left shift value
+  wire  [5:0] s4t_shl =
       // shift isn't needed or impossible
-    (~(|s4t_nlz) | (s3o_exp13c == 13'd1)) ?
-                              {6'd0,s3o_exp13c} :
+    (~(|s4t_nlz) | s3o_sub_0 | (s3o_exp13c == 13'd1)) ? 6'd0 :
       // normalization is possible
-    (s3o_exp13c >  {7'd0,s4t_nlz}) ? {s4t_nlz,s4t_exp13c_mz} :
+    (s3o_exp13c >  {7'd0,s4t_nlz}) ? s4t_nlz :
       // denormalized cases
-    (s3o_exp13c == {7'd0,s4t_nlz}) ? {s4t_nlz_m1,13'd1} :
-                              {s4t_exp13c_m1[5:0],13'd1};
+    (s3o_exp13c == {7'd0,s4t_nlz}) ? (s4t_nlz - 6'd1) : (s3o_exp13c[5:0] - 6'd1);
 
   // re-pack single precision result in LSBs for rounding
   // format: {extra_h-bit, h-bit, 52/23-fractional, rnd-hi-bit, rnd-lo-bit}
@@ -504,12 +495,10 @@ module pfpu_marocchino_addsub
   always @(posedge cpu_clk) begin
     if (s4_adv) begin
       add_sign_o      <= s3o_signc;
-      add_sub_0_o     <= s3o_sub_0; // MAROCCHINO_TODO: optimize ?
+      add_sub_0_o     <= s3o_sub_0;
       add_shr_o       <= s3o_fract56_add[55];
-      add_exp13shr_o  <= s3o_exp13c + 1'b1; // makes since only if add-shr is raised
       add_shl_o       <= s4t_shl;
-      add_exp13shl_o  <= s4t_exp13shl;
-      add_exp13sh0_o  <= s3o_exp13c;
+      add_exp13sh0_o  <= s3o_sub_0 ? 13'd0 : s3o_exp13c;
       add_fract57_o   <= {s4t_fract56,s4t_sticky};
     end // advance
   end // @clock
